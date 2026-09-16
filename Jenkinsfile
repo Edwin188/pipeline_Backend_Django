@@ -25,28 +25,24 @@ pipeline {
             }
         }
 
-        stage('3. Construcción de Imagen (Build Docker Image)') {
+       stage('3. Construcción de Imagen (Build Docker Image)') {
             steps {
                 echo 'Construyendo la imagen de contenedor Docker...'
-                script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    dockerImage.tag("latest")
-                }
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
 
         stage('4. Publicación en Registro (Push to Docker Hub)') {
             steps {
-                echo 'Publicando imagen en Docker Hub...'
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub-credentials') {
-                        dockerImage.push("${DOCKER_TAG}")
-                        dockerImage.push("latest")
-                    }
+                echo 'Subiendo la imagen a Docker Hub...'
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    '''
                 }
             }
         }
-    }
 
     post {
         success {
